@@ -1,20 +1,9 @@
-// fileName : server.js 
-// Example using the http module
-// const http = require('http');
+require('dotenv').config();
+
 const app = require('express')();
-
-// Create an HTTP server
-// const server = http.createServer((req, res) => {
-//     // Set the response headers
-//     res.writeHead(200, { 'Content-Type': 'text/html' });
-
-//     // Write the response content
-//     res.write('<h1>Hello, Node.js HTTP Server!</h1>');
-//     res.end();
-// });
-
-// Specify the port to listen on
 const port = 3000;
+
+console.log(process.env.API_KEY);
 
 // Start the server
 app.listen(port, () => {
