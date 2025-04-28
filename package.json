@@ -1,0 +1,14 @@
+{
+  "name": "ai-journal-backend",
+  "version": "1.0.0",
+  "description": "backend for AI journal project",
+  "main": "index.js",
+  "scripts": {
+    "test": "test"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^5.1.0"
+  }
+}
