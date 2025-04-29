@@ -16,9 +16,9 @@ function buildPrompt(input) {
     if (entries.length == 0) {
         return input;
     }
-    var response = "Respond to the following prompt:\n"
+    var response = "The following information is known to you. Use this information to answer a later part of the prompt, but do not talk about it otherwise. Only use information here if it is applicable to the actual query. If it is not relevant, do not mention it at all, not even to say it is not relevant. The information is written in first-person about the user, and anything referring to \"I\" or \"me\" refers to the user.\n"
+    response += "Respond to the following query and nothing else:\n"
     response += input;
-    response += "\nThe following information is known to you. Treat it as if it is normal part of your dataset, do not remark about it being provided or about you knowing it. Only use it if it is applicable to the previously stated prompt."
     for (var i = 0; i < entries.length; i++) {
         response += `\n${i}: `;
         response += entries[i];
