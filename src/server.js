@@ -1,4 +1,7 @@
 require('dotenv').config();
+const { v4: uuidv4 } = require('uuid');
+
+const { QdrantClient } = require('@qdrant/js-client-rest');
 const { CohereClientV2 } = require('cohere-ai');
 
 const express = require('express');
@@ -10,15 +13,24 @@ var entries = [];
 var embeddings = [];
 
 const cohere = new CohereClientV2({
-    token: process.env.API_KEY,
+    token: process.env.COHERE_API_KEY,
 });
 
-// Cosine similarity
-function cosineSimilarity(a, b) {
-    const dotProduct = a.reduce((sum, val, i) => sum + val * b[i], 0);
-    const normA = Math.sqrt(a.reduce((sum, val) => sum + val * val, 0));
-    const normB = Math.sqrt(b.reduce((sum, val) => sum + val * val, 0));
-    return dotProduct / (normA * normB);
+const qdrantClient = new QdrantClient({
+    url: 'https://d30bea77-2673-4564-b4c1-7fd18e6ee0b1.us-west-1-0.aws.cloud.qdrant.io',
+    apiKey: process.env.QDRANT_API_KEY,
+});
+
+async function batchUpsertToQdrant(embeddings, plaintexts) {
+    const points = embeddings.map((ebd, idx) => ({
+        id: uuidv4(),
+        vector: ebd,
+        payload: {
+            plaintext: plaintexts[idx]
+        },
+    }));
+
+    await qdrantClient.upsert("entries", { points });
 }
 
 async function search(query) {
@@ -31,17 +43,13 @@ async function search(query) {
   
     const queryVector = response.embeddings.float[0];
   
-    const scores = embeddings.map((vec, idx) => ({
-      text: entries[idx],
-      score: cosineSimilarity(queryVector, vec)
-    }));
+    const searchResultsRaw = await qdrantClient.search('entries', {
+        vector: queryVector,
+        top: 10,
+    });
   
-    scores.sort((a, b) => b.score - a.score);
-
-    console.log(scores);
-  
-    return scores.slice(0, 3).map((r) => r.text); // Top 3 matches
-  }
+    return searchResultsRaw.map((r) => r.payload.plaintext); // Top 3 matches
+}
 
 async function buildPrompt(input) {
     const matches = await search(input)
@@ -96,21 +104,15 @@ app.post('/journal/write', async (req, res) => {
 
     const journalEntryIdeas = JSON.parse(rawJournalEntryIdeas.message.content[0].text);
 
-    
-    for (var i = 0; i < journalEntryIdeas.length; i++) {
-        entries.push(journalEntryIdeas[i]);
-    }
-
-    console.log(entries);
-
     const embedResponse = await cohere.embed({
-        texts: entries,
+        texts: journalEntryIdeas,
         model: 'embed-english-v3.0',
         inputType: 'search_document',
         embeddingTypes: ["float"],
-      });
+    });
 
-    embeddings = embedResponse.embeddings.float;
+    await batchUpsertToQdrant(embedResponse.embeddings.float, journalEntryIdeas);
+    
     res.status(200).send()
 })
 
