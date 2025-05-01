@@ -82,16 +82,35 @@ app.post('/query', async (req, res) => {
 })
 
 app.post('/journal/write', async (req, res) => {
-    entries.push(req.body.entry);
+    // entries.push(req.body.entry);
 
-    const response = await cohere.embed({
+    const rawJournalEntryIdeas = await cohere.chat({
+        model: 'command-a-03-2025',
+        messages: [
+          {
+            role: 'user',
+            content: `Separate the following into separate phrases for each separate idea. Notice that ideas can span between different sentences across the entry. Ensure that two related things are stored together, even if they are in different places. Do so in a way that does not lose information. Make each sentence grammatically valid on its own. Store it as an array of strings in JSON format, and do not produce any output other than the JSON. Produce the output as raw JSON with no additional formatting.\n\n${req.body.entry}`,
+          },
+        ],
+    });
+
+    const journalEntryIdeas = JSON.parse(rawJournalEntryIdeas.message.content[0].text);
+
+    
+    for (var i = 0; i < journalEntryIdeas.length; i++) {
+        entries.push(journalEntryIdeas[i]);
+    }
+
+    console.log(entries);
+
+    const embedResponse = await cohere.embed({
         texts: entries,
         model: 'embed-english-v3.0',
         inputType: 'search_document',
         embeddingTypes: ["float"],
       });
 
-    embeddings = response.embeddings.float;
+    embeddings = embedResponse.embeddings.float;
     res.status(200).send()
 })
 
