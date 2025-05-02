@@ -22,18 +22,16 @@ async function insert(data) {
 }
 
 async function instantiateCursor() {
-    if (!cursor) {
-        const db = await mongoConnect();
-        const collection = db.collection('entries');
-        cursor = await collection.find();
-    }
+    const db = await mongoConnect();
+    const collection = db.collection('entries');
+    cursor = await collection.find();
     return cursor;
 }
 
 async function loadMore() {
     var ret = [];
 
-    const cursor = await instantiateCursor();
+    if (!cursor) { instantiateCursor(); }
     for (var i = 0; i < 10; i++) {
         if (!await cursor.hasNext()) {
             break;

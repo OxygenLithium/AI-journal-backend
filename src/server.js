@@ -28,8 +28,6 @@ async function batchUpsertToQdrant(embeddings, plaintexts, journalEntryID) {
     const points = embeddings.map((ebd, idx) => {
         const uuid = uuidv4();
         uuids.push(uuid);
-        console.log(idx);
-        console.log(plaintexts[idx]);
 
         return {
             id: uuid,
@@ -115,7 +113,6 @@ async function buildPrompt(input) {
         response += `\n${i}: `;
         response += matches[i];
     }
-    console.log(response);
     return response;
 }
 
@@ -146,10 +143,9 @@ app.post('/journal/write', async (req, res) => {
     res.status(200).send()
 })
 
-app.get('/journal/instantiate', async (req, res) => {
-    res.status(200).send({
-        journalEntries: await instantiateCursor()
-    })
+app.post('/journal/instantiateCursor', async (req, res) => {
+    await instantiateCursor();
+    res.status(200).send();
 })
 
 app.get('/journal/loadMore', async (req, res) => {
