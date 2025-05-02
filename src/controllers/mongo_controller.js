@@ -21,12 +21,31 @@ async function insert(data) {
     await collection.insertOne(data);
 }
 
-async function retrieve() {
-    const db = await mongoConnect();
-    const collection = db.collection('entries');
-    const rawResp = await collection.find();
-    console.log(rawResp);
+async function instantiateCursor() {
+    if (!cursor) {
+        const db = await mongoConnect();
+        const collection = db.collection('entries');
+        cursor = await collection.find();
+    }
+    return cursor;
+}
+
+async function loadMore() {
+    var ret = [];
+
+    const cursor = await instantiateCursor();
+    for (var i = 0; i < 10; i++) {
+        if (!await cursor.hasNext()) {
+            break;
+        }
+        var item = await cursor.next();
+        delete item["_id"];
+        ret.push(item);
+    }
+
+    return ret;
 }
 
 exports.insertMongoDB = insert;
-exports.retrieveMongoDB = retrieve;
+exports.instantiateCursor = instantiateCursor;
+exports.loadMore = loadMore;

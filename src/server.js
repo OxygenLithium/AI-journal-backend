@@ -4,7 +4,7 @@ const { v4: uuidv4 } = require('uuid');
 const { QdrantClient } = require('@qdrant/js-client-rest');
 const { CohereClientV2 } = require('cohere-ai');
 
-const { insertMongoDB, retrieveMongoDB } = require("./controllers/mongo_controller");
+const { insertMongoDB, instantiateCursor, loadMore } = require("./controllers/mongo_controller");
 
 const express = require('express');
 const app = express();
@@ -146,8 +146,14 @@ app.post('/journal/write', async (req, res) => {
     res.status(200).send()
 })
 
-app.get('/journal/query', async (req, res) => {
+app.get('/journal/instantiate', async (req, res) => {
     res.status(200).send({
-        journalEntries: await retrieveMongoDB()
+        journalEntries: await instantiateCursor()
+    })
+})
+
+app.get('/journal/loadMore', async (req, res) => {
+    res.status(200).send({
+        journalEntries: await loadMore()
     })
 })
