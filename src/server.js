@@ -3,6 +3,7 @@ const { v4: uuidv4 } = require('uuid');
 
 const { QdrantClient } = require('@qdrant/js-client-rest');
 const { CohereClientV2 } = require('cohere-ai');
+const { MongoClient } = require("mongodb");
 
 const express = require('express');
 const app = express();
@@ -10,27 +11,99 @@ const port = 3000;
 app.use(express.json());
 
 var entries = [];
-var embeddings = [];
 
+//Instantiate Cohere client
 const cohere = new CohereClientV2({
     token: process.env.COHERE_API_KEY,
 });
 
-const qdrantClient = new QdrantClient({
+// Connect to Mongo
+const mongo = new MongoClient(`mongodb+srv://OxygenLithium:${process.env.MONGODB_PASSWORD}@cluster0.tnvmsy7.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`);
+
+let db;
+
+async function mongoConnect() {
+    if (!db) {
+      await mongo.connect();
+      db = mongo.db('JournalEntries');
+      console.log('Connected to MongoDB');
+    }
+    return db;
+}
+
+// Instantiate Qdrant client
+const qdrant = new QdrantClient({
     url: 'https://d30bea77-2673-4564-b4c1-7fd18e6ee0b1.us-west-1-0.aws.cloud.qdrant.io',
     apiKey: process.env.QDRANT_API_KEY,
 });
 
-async function batchUpsertToQdrant(embeddings, plaintexts) {
-    const points = embeddings.map((ebd, idx) => ({
-        id: uuidv4(),
-        vector: ebd,
-        payload: {
-            plaintext: plaintexts[idx]
-        },
-    }));
+async function insertToMongoDB(data) {
+    const db = await mongoConnect();
+    const collection = db.collection('entries');
+    await collection.insertOne(data);
+}
 
-    await qdrantClient.upsert("entries", { points });
+async function batchUpsertToQdrant(embeddings, plaintexts, journalEntryID) {
+    let uuids = [];
+
+    const points = embeddings.map((ebd, idx) => {
+        const uuid = uuidv4();
+        uuids.push(uuid);
+        console.log(idx);
+        console.log(plaintexts[idx]);
+
+        return {
+            id: uuid,
+            vector: ebd,
+            payload: {
+                userID: null,
+                contextID: null,
+                date: null,
+                journalEntryID,
+                plaintext: plaintexts[idx]
+            },
+        }
+    });
+
+    await qdrant.upsert("entries", { points });
+
+    return uuids;
+}
+
+async function handleInsertionLogic(entry) {
+    const journalEntryID = uuidv4();
+
+    const rawJournalEntryIdeas = await cohere.chat({
+        model: 'command-a-03-2025',
+        messages: [
+          {
+            role: 'user',
+            content: `Separate the following into separate phrases for each separate idea. Notice that ideas can span between different sentences across the entry. Ensure that two related things are stored together, even if they are in different places. Do so in a way that does not lose information. Make each sentence grammatically valid on its own. Store it as an array of strings in JSON format, and do not produce any output other than the JSON. Produce the output as raw JSON with no additional formatting.\n\n${entry}`,
+          },
+        ],
+    });
+
+    const journalEntryIdeas = JSON.parse(rawJournalEntryIdeas.message.content[0].text);
+
+    const embedResponse = await cohere.embed({
+        texts: journalEntryIdeas,
+        model: 'embed-english-v3.0',
+        inputType: 'search_document',
+        embeddingTypes: ["float"],
+    });
+
+    const ideaUUIDs = await batchUpsertToQdrant(embedResponse.embeddings.float, journalEntryIdeas, journalEntryID);
+
+    const journalEntryObject = {
+        userID: null,
+        contextID: null,
+        date: null,
+        id: journalEntryID,
+        ideaIDs: ideaUUIDs,
+        text: entry,
+    }
+
+    await insertToMongoDB(journalEntryObject);
 }
 
 async function search(query) {
@@ -43,7 +116,7 @@ async function search(query) {
   
     const queryVector = response.embeddings.float[0];
   
-    const searchResultsRaw = await qdrantClient.search('entries', {
+    const searchResultsRaw = await qdrant.search('entries', {
         vector: queryVector,
         top: 10,
     });
@@ -90,29 +163,7 @@ app.post('/query', async (req, res) => {
 })
 
 app.post('/journal/write', async (req, res) => {
-    // entries.push(req.body.entry);
-
-    const rawJournalEntryIdeas = await cohere.chat({
-        model: 'command-a-03-2025',
-        messages: [
-          {
-            role: 'user',
-            content: `Separate the following into separate phrases for each separate idea. Notice that ideas can span between different sentences across the entry. Ensure that two related things are stored together, even if they are in different places. Do so in a way that does not lose information. Make each sentence grammatically valid on its own. Store it as an array of strings in JSON format, and do not produce any output other than the JSON. Produce the output as raw JSON with no additional formatting.\n\n${req.body.entry}`,
-          },
-        ],
-    });
-
-    const journalEntryIdeas = JSON.parse(rawJournalEntryIdeas.message.content[0].text);
-
-    const embedResponse = await cohere.embed({
-        texts: journalEntryIdeas,
-        model: 'embed-english-v3.0',
-        inputType: 'search_document',
-        embeddingTypes: ["float"],
-    });
-
-    await batchUpsertToQdrant(embedResponse.embeddings.float, journalEntryIdeas);
-    
+    await handleInsertionLogic(req.body.entry);
     res.status(200).send()
 })
 
