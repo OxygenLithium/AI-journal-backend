@@ -4,7 +4,6 @@ const { MongoClient } = require("mongodb");
 // Connect to Mongo
 const mongo = new MongoClient(`mongodb+srv://OxygenLithium:${process.env.MONGODB_PASSWORD}@cluster0.tnvmsy7.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`);
 let db;
-let cursor;
 
 async function mongoConnect() {
     if (!db) {
@@ -21,23 +20,22 @@ async function insert(data) {
     await collection.insertOne(data);
 }
 
-async function instantiateCursor() {
+async function loadMore(lastSeen) {
     const db = await mongoConnect();
     const collection = db.collection('entries');
-    cursor = await collection.find();
-    return cursor;
-}
+    var cursor;
 
-async function loadMore() {
+    if (lastSeen = -1) {
+        cursor = collection.find().sort({ _id: -1 }).limit(10);
+    }
+    else {
+        cursor = collection.find({ _id: { $lt: ObjectId(lastSeen) } }).sort({ _id: -1 }).limit(10);
+    }
+
     var ret = [];
 
-    if (!cursor) { instantiateCursor(); }
-    for (var i = 0; i < 10; i++) {
-        if (!await cursor.hasNext()) {
-            break;
-        }
-        var item = await cursor.next();
-        delete item["_id"];
+    while (await cursor.hasNext()) {
+        const item = await cursor.next();
         ret.push(item);
     }
 
@@ -45,5 +43,4 @@ async function loadMore() {
 }
 
 exports.insertMongoDB = insert;
-exports.instantiateCursor = instantiateCursor;
 exports.loadMore = loadMore;
