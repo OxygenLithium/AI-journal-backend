@@ -1,5 +1,5 @@
 require('dotenv').config();
-const { MongoClient } = require("mongodb");
+const { MongoClient, ObjectId } = require("mongodb");
 
 // Connect to Mongo
 const mongo = new MongoClient(`mongodb+srv://OxygenLithium:${process.env.MONGODB_PASSWORD}@cluster0.tnvmsy7.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`);
@@ -25,11 +25,11 @@ async function loadMore(lastSeen) {
     const collection = db.collection('entries');
     var cursor;
 
-    if (lastSeen = -1) {
+    if (lastSeen == -1) {
         cursor = collection.find().sort({ _id: -1 }).limit(10);
     }
     else {
-        cursor = collection.find({ _id: { $lt: ObjectId(lastSeen) } }).sort({ _id: -1 }).limit(10);
+        cursor = collection.find({ _id: { $lt: new ObjectId(lastSeen) } }).sort({ _id: -1 }).limit(10);
     }
 
     var ret = [];
