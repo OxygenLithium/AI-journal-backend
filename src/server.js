@@ -3,45 +3,24 @@ const { v4: uuidv4 } = require('uuid');
 
 const { QdrantClient } = require('@qdrant/js-client-rest');
 const { CohereClientV2 } = require('cohere-ai');
-const { MongoClient } = require("mongodb");
+
+const { insertMongoDB, retrieveMongoDB } = require("./controllers/mongo_controller");
 
 const express = require('express');
 const app = express();
 const port = 3000;
 app.use(express.json());
 
-var entries = [];
-
 //Instantiate Cohere client
 const cohere = new CohereClientV2({
     token: process.env.COHERE_API_KEY,
 });
-
-// Connect to Mongo
-const mongo = new MongoClient(`mongodb+srv://OxygenLithium:${process.env.MONGODB_PASSWORD}@cluster0.tnvmsy7.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`);
-
-let db;
-
-async function mongoConnect() {
-    if (!db) {
-      await mongo.connect();
-      db = mongo.db('JournalEntries');
-      console.log('Connected to MongoDB');
-    }
-    return db;
-}
 
 // Instantiate Qdrant client
 const qdrant = new QdrantClient({
     url: 'https://d30bea77-2673-4564-b4c1-7fd18e6ee0b1.us-west-1-0.aws.cloud.qdrant.io',
     apiKey: process.env.QDRANT_API_KEY,
 });
-
-async function insertToMongoDB(data) {
-    const db = await mongoConnect();
-    const collection = db.collection('entries');
-    await collection.insertOne(data);
-}
 
 async function batchUpsertToQdrant(embeddings, plaintexts, journalEntryID) {
     let uuids = [];
@@ -103,7 +82,7 @@ async function handleInsertionLogic(entry) {
         text: entry,
     }
 
-    await insertToMongoDB(journalEntryObject);
+    await insertMongoDB(journalEntryObject);
 }
 
 async function search(query) {
@@ -169,6 +148,6 @@ app.post('/journal/write', async (req, res) => {
 
 app.get('/journal/query', async (req, res) => {
     res.status(200).send({
-        journalEntries: entries
+        journalEntries: await retrieveMongoDB()
     })
 })
