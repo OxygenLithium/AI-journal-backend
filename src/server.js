@@ -4,7 +4,7 @@ const { v4: uuidv4 } = require('uuid');
 const { QdrantClient } = require('@qdrant/js-client-rest');
 const { CohereClientV2 } = require('cohere-ai');
 
-const { insertMongoDB, loadMore } = require("./controllers/mongo_controller");
+const { insertMongoDB, loadMore, deleteMongoDB } = require("./controllers/mongo_controller");
 
 const express = require('express');
 const app = express();
@@ -45,6 +45,23 @@ async function batchUpsertToQdrant(embeddings, plaintexts, journalEntryID) {
     await qdrant.upsert("entries", { points });
 
     return uuids;
+}
+
+async function deleteQdrant(entryID) {
+    await qdrant.delete("entries",
+    {
+        "filter": {
+            "must": [
+            {
+                "key": "journalEntryID",
+                "match": {
+                    "value": entryID
+                }
+            }
+            ]
+        }
+    }
+    )
 }
 
 async function handleInsertionLogic(entry) {
@@ -148,4 +165,11 @@ app.get(`/journal/loadMore/:lastSeen`, async (req, res) => {
     res.status(200).send({
         journalEntries: await loadMore(lastSeen)
     })
+})
+
+app.delete(`/journal/delete/:id`, async (req, res) => {
+    const id = req.params.id;
+    deleteMongoDB(id);
+    deleteQdrant(id);
+    res.status(200).send()
 })

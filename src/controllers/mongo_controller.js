@@ -42,5 +42,13 @@ async function loadMore(lastSeen) {
     return ret;
 }
 
+async function deleteEntry(id) {
+    const db = await mongoConnect();
+    const collection = db.collection('entries');
+
+    collection.deleteOne({id: id});
+}
+
 exports.insertMongoDB = insert;
 exports.loadMore = loadMore;
+exports.deleteMongoDB = deleteEntry;
