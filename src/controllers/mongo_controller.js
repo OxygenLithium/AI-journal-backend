@@ -2,7 +2,9 @@ require('dotenv').config();
 const { MongoClient, ObjectId } = require("mongodb");
 
 // Connect to Mongo
-const mongo = new MongoClient(`mongodb+srv://OxygenLithium:${process.env.MONGODB_PASSWORD}@cluster0.tnvmsy7.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`);
+// URL for when on hotspot: mongodb://OxygenLithium:${process.env.MONGODB_PASSWORD}@ac-8l8ijzj-shard-00-00.tnvmsy7.mongodb.net:27017,ac-8l8ijzj-shard-00-01.tnvmsy7.mongodb.net:27017,ac-8l8ijzj-shard-00-02.tnvmsy7.mongodb.net:27017/?ssl=true&replicaSet=atlas-7iem9x-shard-0&authSource=admin&retryWrites=true&w=majority&appName=Cluster0
+// URL for when not on hotspot: mongodb+srv://OxygenLithium:${process.env.MONGODB_PASSWORD}@cluster0.tnvmsy7.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0
+const mongo = new MongoClient(`mongodb://OxygenLithium:${process.env.MONGODB_PASSWORD}@ac-8l8ijzj-shard-00-00.tnvmsy7.mongodb.net:27017,ac-8l8ijzj-shard-00-01.tnvmsy7.mongodb.net:27017,ac-8l8ijzj-shard-00-02.tnvmsy7.mongodb.net:27017/?ssl=true&replicaSet=atlas-7iem9x-shard-0&authSource=admin&retryWrites=true&w=majority&appName=Cluster0`);
 let db;
 
 async function mongoConnect() {
@@ -17,7 +19,9 @@ async function mongoConnect() {
 async function insert(data) {
     const db = await mongoConnect();
     const collection = db.collection('entries');
-    await collection.insertOne(data);
+    const returnVal = await collection.insertOne(data);
+
+    return await getByObjectID(returnVal.insertedId);
 }
 
 async function loadMore(lastSeen) {
@@ -40,6 +44,15 @@ async function loadMore(lastSeen) {
     }
 
     return ret;
+}
+
+async function getByObjectID(id) {
+    console.log(id);
+
+    const db = await mongoConnect();
+    const collection = db.collection('entries');
+
+    return await collection.findOne(id);
 }
 
 async function deleteEntry(id) {

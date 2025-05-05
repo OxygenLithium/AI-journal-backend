@@ -97,7 +97,7 @@ async function handleInsertionLogic(entry) {
         text: entry,
     }
 
-    await insertMongoDB(journalEntryObject);
+    return await insertMongoDB(journalEntryObject);
 }
 
 async function search(query) {
@@ -156,8 +156,9 @@ app.post('/query', async (req, res) => {
 })
 
 app.post('/journal/write', async (req, res) => {
-    await handleInsertionLogic(req.body.entry);
-    res.status(200).send()
+    res.status(200).send({
+        insertedEntry: await handleInsertionLogic(req.body.entry)
+    })
 })
 
 app.get(`/journal/loadMore/:lastSeen`, async (req, res) => {
