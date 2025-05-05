@@ -72,7 +72,7 @@ async function handleInsertionLogic(entry) {
         messages: [
           {
             role: 'user',
-            content: `Separate the following into separate phrases for each separate idea. Notice that ideas can span between different sentences across the entry. Ensure that two related things are stored together, even if they are in different places. Do so in a way that does not lose information. Make each sentence grammatically valid on its own. Store it as an array of strings in JSON format, and do not produce any output other than the JSON. Produce the output as raw JSON with no additional formatting.\n\n${entry}`,
+            content: `Write separate entries for each different piece of information in the following. Notice that ideas can span between different sentences across the entry. Ensure that two related things are stored together, even if they are in different places. Do so in a way that does not lose information. Ensure that each entry makes sense on its own as a piece of information. Make each entry grammatically valid on its own (you can repeat words or add text as necessary). Store it as an array of strings in JSON format, and do not produce any output other than the JSON. Produce the output as raw JSON with no additional formatting.\n\n${entry}`,
           },
         ],
     });
