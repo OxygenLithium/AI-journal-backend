@@ -59,7 +59,7 @@ async function deleteEntry(id) {
     const db = await mongoConnect();
     const collection = db.collection('entries');
 
-    collection.deleteOne({id: id});
+    collection.deleteOne({_id: new ObjectId(id)});
 }
 
 exports.insertMongoDB = insert;

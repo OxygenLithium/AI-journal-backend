@@ -22,9 +22,7 @@ const qdrant = new QdrantClient({
     apiKey: process.env.QDRANT_API_KEY,
 });
 
-async function batchUpsertToQdrant(embeddings, plaintexts, journalEntryID) {
-    let uuids = [];
-
+async function batchUpsertToQdrant(embeddings, plaintexts, uuids, journalEntryID) {
     const points = embeddings.map((ebd, idx) => {
         const uuid = uuidv4();
         uuids.push(uuid);
@@ -65,14 +63,12 @@ async function deleteQdrant(entryID) {
 }
 
 async function handleInsertionLogic(entry) {
-    const journalEntryID = uuidv4();
-
     const rawJournalEntryIdeas = await cohere.chat({
         model: 'command-a-03-2025',
         messages: [
           {
             role: 'user',
-            content: `Write separate entries for each different piece of information in the following. Notice that ideas can span between different sentences across the entry. Ensure that two related things are stored together, even if they are in different places. Do so in a way that does not lose information. Ensure that each entry makes sense on its own as a piece of information. Make each entry grammatically valid on its own (you can repeat words or add text as necessary). Store it as an array of strings in JSON format, and do not produce any output other than the JSON. Produce the output as raw JSON with no additional formatting.\n\n${entry}`,
+            content: `Write separate entries for each different event or fact in the following. Notice that these can span between different sentences across the entry. Ensure that two related things are stored together, even if they are in different places. Do so in a way that does not lose information. Ensure that each entry makes sense on its own as a piece of information. Make each entry grammatically valid on its own (you can repeat words or add text as necessary). Store it as an array of strings in JSON format, and do not produce any output other than the JSON. Produce the output as raw JSON with no additional formatting.\n\n${entry}`,
           },
         ],
     });
@@ -86,18 +82,24 @@ async function handleInsertionLogic(entry) {
         embeddingTypes: ["float"],
     });
 
-    const ideaUUIDs = await batchUpsertToQdrant(embedResponse.embeddings.float, journalEntryIdeas, journalEntryID);
+    //Pre-generate UUIDs for the ideas, allowing them to be stored on the Mongo object on creation
+    const ideaUUIDs = journalEntryIdeas.map((el) => { return uuidv4; });
 
     const journalEntryObject = {
         userID: null,
         contextID: null,
         date: null,
-        id: journalEntryID,
         ideaIDs: ideaUUIDs,
         text: entry,
     }
 
-    return await insertMongoDB(journalEntryObject);
+    //Insert MongoObject
+    const mongoObject = await insertMongoDB(journalEntryObject);
+    
+    //Upsert Qdrant vectors
+    await batchUpsertToQdrant(embedResponse.embeddings.float, journalEntryIdeas, ideaUUIDs, mongoObject._id);
+
+    return mongoObject;
 }
 
 async function search(query) {
