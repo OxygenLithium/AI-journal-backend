@@ -4,7 +4,7 @@ const { v4: uuidv4 } = require('uuid');
 const { QdrantClient } = require('@qdrant/js-client-rest');
 const { CohereClientV2 } = require('cohere-ai');
 
-const { insertMongoDB, loadMore, deleteMongoDB } = require("./controllers/mongo_controller");
+const { insertMongoDB, editMongoDB, loadMore, deleteMongoDB } = require("./controllers/mongo_controller");
 
 const express = require('express');
 const app = express();
@@ -24,11 +24,8 @@ const qdrant = new QdrantClient({
 
 async function batchUpsertToQdrant(embeddings, plaintexts, uuids, journalEntryID) {
     const points = embeddings.map((ebd, idx) => {
-        const uuid = uuidv4();
-        uuids.push(uuid);
-
         return {
-            id: uuid,
+            id: uuids[idx],
             vector: ebd,
             payload: {
                 userID: null,
@@ -62,7 +59,7 @@ async function deleteQdrant(entryID) {
     )
 }
 
-async function handleInsertionLogic(entry) {
+async function generateIdeas(entry) {
     const rawJournalEntryIdeas = await cohere.chat({
         model: 'command-a-03-2025',
         messages: [
@@ -83,7 +80,13 @@ async function handleInsertionLogic(entry) {
     });
 
     //Pre-generate UUIDs for the ideas, allowing them to be stored on the Mongo object on creation
-    const ideaUUIDs = journalEntryIdeas.map((el) => { return uuidv4; });
+    const ideaUUIDs = journalEntryIdeas.map((el) => { return uuidv4(); });
+
+    return { embeddings: embedResponse.embeddings.float, ideas: journalEntryIdeas, ideaUUIDs }
+}
+
+async function handleInsertionLogic(entry) {
+    const { embeddings, ideas, ideaUUIDs } = await generateIdeas(entry);
 
     const journalEntryObject = {
         userID: null,
@@ -97,7 +100,17 @@ async function handleInsertionLogic(entry) {
     const mongoObject = await insertMongoDB(journalEntryObject);
     
     //Upsert Qdrant vectors
-    await batchUpsertToQdrant(embedResponse.embeddings.float, journalEntryIdeas, ideaUUIDs, mongoObject._id);
+    await batchUpsertToQdrant(embeddings, ideas, ideaUUIDs, mongoObject._id);
+
+    return mongoObject;
+}
+
+async function handleEdit(update, id) {
+    await deleteQdrant(id);
+    const { embeddings, ideas, ideaUUIDs } = await generateIdeas(update);
+
+    const mongoObject = await editMongoDB(update, ideaUUIDs, id);
+    await batchUpsertToQdrant(embeddings, ideas, ideaUUIDs, mongoObject._id);
 
     return mongoObject;
 }
@@ -140,7 +153,7 @@ app.listen(port, () => {
     console.log(`Node.js HTTP server is running on port ${port}`);
 });
 
-app.post('/query', async (req, res) => {
+app.put('/query', async (req, res) => {
     const rawResponse = await cohere.chat({
         model: 'command-a-03-2025',
         messages: [
@@ -160,6 +173,12 @@ app.post('/query', async (req, res) => {
 app.post('/journal/write', async (req, res) => {
     res.status(200).send({
         insertedEntry: await handleInsertionLogic(req.body.entry)
+    })
+})
+
+app.put('/journal/edit/:id', async (req, res) => {
+    res.status(200).send({
+        editedEntry: await handleEdit(req.body.update, req.params.id)
     })
 })
 

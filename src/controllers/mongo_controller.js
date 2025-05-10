@@ -16,24 +16,16 @@ async function mongoConnect() {
     return db;
 }
 
-async function insert(data) {
-    const db = await mongoConnect();
-    const collection = db.collection('entries');
-    const returnVal = await collection.insertOne(data);
-
-    return await getByObjectID(returnVal.insertedId);
-}
-
 async function loadMore(lastSeen) {
     const db = await mongoConnect();
     const collection = db.collection('entries');
     var cursor;
 
     if (lastSeen == -1) {
-        cursor = collection.find().sort({ _id: -1 }).limit(10);
+        cursor = await collection.find().sort({ _id: -1 }).limit(10);
     }
     else {
-        cursor = collection.find({ _id: { $lt: new ObjectId(lastSeen) } }).sort({ _id: -1 }).limit(10);
+        cursor = await collection.find({ _id: { $lt: new ObjectId(lastSeen) } }).sort({ _id: -1 }).limit(10);
     }
 
     var ret = [];
@@ -47,21 +39,37 @@ async function loadMore(lastSeen) {
 }
 
 async function getByObjectID(id) {
-    console.log(id);
-
     const db = await mongoConnect();
     const collection = db.collection('entries');
 
     return await collection.findOne(id);
 }
 
+async function insert(data) {
+    const db = await mongoConnect();
+    const collection = db.collection('entries');
+    const returnVal = await collection.insertOne(data);
+
+    return await getByObjectID(returnVal.insertedId);
+}
+
 async function deleteEntry(id) {
     const db = await mongoConnect();
     const collection = db.collection('entries');
 
-    collection.deleteOne({_id: new ObjectId(id)});
+    await collection.deleteOne({_id: new ObjectId(id)});
 }
 
-exports.insertMongoDB = insert;
+async function editEntry(update, ideaIDs, id) {
+    const db = await mongoConnect();
+    const collection = db.collection('entries');
+
+    await collection.updateOne({_id: new ObjectId(id)}, { $set: { text: update, ideaIDs: ideaIDs } });
+
+    return await getByObjectID(new ObjectId(id));
+}
+
 exports.loadMore = loadMore;
+exports.insertMongoDB = insert;
+exports.editMongoDB = editEntry;
 exports.deleteMongoDB = deleteEntry;
