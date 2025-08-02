@@ -1,5 +1,7 @@
-require('dotenv').config();
-const { MongoClient, ObjectId } = require("mongodb");
+import dotenv from 'dotenv';
+import { MongoClient, ObjectId } from "mongodb";
+
+dotenv.config();
 
 // Connect to Mongo
 // URL for when on hotspot: mongodb://OxygenLithium:${process.env.MONGODB_PASSWORD}@ac-8l8ijzj-shard-00-00.tnvmsy7.mongodb.net:27017,ac-8l8ijzj-shard-00-01.tnvmsy7.mongodb.net:27017,ac-8l8ijzj-shard-00-02.tnvmsy7.mongodb.net:27017/?ssl=true&replicaSet=atlas-7iem9x-shard-0&authSource=admin&retryWrites=true&w=majority&appName=Cluster0
@@ -16,7 +18,7 @@ async function mongoConnect() {
     return db;
 }
 
-async function loadMore(lastSeen) {
+export async function loadMoreEntries(lastSeen) {
     const db = await mongoConnect();
     const collection = db.collection('entries');
     var cursor;
@@ -45,7 +47,7 @@ async function getByObjectID(id) {
     return await collection.findOne(id);
 }
 
-async function insert(data) {
+export async function insertEntry(data) {
     const db = await mongoConnect();
     const collection = db.collection('entries');
     const returnVal = await collection.insertOne(data);
@@ -53,14 +55,14 @@ async function insert(data) {
     return await getByObjectID(returnVal.insertedId);
 }
 
-async function deleteEntry(id) {
+export async function deleteEntry(id) {
     const db = await mongoConnect();
     const collection = db.collection('entries');
 
     await collection.deleteOne({_id: new ObjectId(id)});
 }
 
-async function editEntry(update, ideaIDs, id) {
+export async function updateEntry(update, ideaIDs, id) {
     const db = await mongoConnect();
     const collection = db.collection('entries');
 
@@ -68,8 +70,3 @@ async function editEntry(update, ideaIDs, id) {
 
     return await getByObjectID(new ObjectId(id));
 }
-
-exports.loadMore = loadMore;
-exports.insertMongoDB = insert;
-exports.editMongoDB = editEntry;
-exports.deleteMongoDB = deleteEntry;

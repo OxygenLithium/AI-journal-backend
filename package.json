@@ -1,6 +1,7 @@
 {
   "name": "ai-journal-backend",
   "version": "1.0.0",
+  "type": "module",
   "description": "backend for AI journal project",
   "main": "index.js",
   "scripts": {
