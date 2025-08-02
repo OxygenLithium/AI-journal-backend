@@ -5,6 +5,10 @@ const qdrant = new QdrantClient({
     apiKey: process.env.QDRANT_API_KEY,
 });
 
+export async function qdrantSearch(searchParams) {
+    return await qdrant.search('entries', searchParams);
+}
+
 export async function upsertIdeas(embeddings, plaintexts, uuids, journalEntryID) {
     const points = embeddings.map((ebd, idx) => {
         return {
@@ -26,8 +30,6 @@ export async function upsertIdeas(embeddings, plaintexts, uuids, journalEntryID)
 }
 
 export async function deleteIdeasByEntryID(entryID) {
-    console.log(entryID);
-    console.log(typeof(entryID));
     await qdrant.delete("entries",
     {
         "filter": {

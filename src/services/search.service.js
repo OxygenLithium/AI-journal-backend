@@ -1,5 +1,5 @@
 import { cohere } from '../config/index.js';
-import { qdrant } from '../config/index.js';
+import { qdrantSearch } from '../controllers/qdrant.controller.js';
 
 async function searchRelevantIdeas(query) {
   const response = await cohere.embed({
@@ -11,7 +11,7 @@ async function searchRelevantIdeas(query) {
 
   const queryVector = response.embeddings.float[0];
 
-  const searchResults = await qdrant.search('entries', {
+  const searchResults = await qdrantSearch({
     vector: queryVector,
     top: 10,
   });

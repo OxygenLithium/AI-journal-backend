@@ -9,10 +9,4 @@ const cohere = new CohereClientV2({
   token: process.env.COHERE_API_KEY,
 });
 
-// Initialize and export Qdrant client
-const qdrant = new QdrantClient({
-  url: process.env.QDRANT_URL,
-  apiKey: process.env.QDRANT_API_KEY,
-});
-
-export { cohere, qdrant };
+export { cohere };
