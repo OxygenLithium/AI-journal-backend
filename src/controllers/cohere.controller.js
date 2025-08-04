@@ -1,12 +1,26 @@
 import { cohere } from '../config/index.js';
 import { v4 as uuidv4 } from 'uuid';
+import fs from 'fs/promises';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+
+async function buildPrompt(promptName, variables = {}) {
+  const __filename = fileURLToPath(import.meta.url);
+  const __dirname = path.dirname(__filename);
+  const filePath = path.join(__dirname, `../prompts/${promptName}.md`);
+
+  const raw = await fs.readFile(filePath, 'utf-8');
+  const compiled = new Function(...Object.keys(variables), `return \`${raw}\`;`);
+  return compiled(...Object.values(variables));
+}
 
 export async function generateIdeas(entryText) {
   const rawResponse = await cohere.chat({
     model: 'command-a-03-2025',
     messages: [{
       role: 'user',
-      content: `Separate any unrelated ideas or events into different entries, but ensure they all have necessary context and that related events are in the same entry. Store it as an array of strings in JSON format, and do not produce any output other than the JSON. Produce the output as raw JSON with no additional formatting.\n\n${entryText}`,
+      content: await buildPrompt('entryParsingPrompt', { journalEntry: entryText, dateString: })
     }],
   });
 
