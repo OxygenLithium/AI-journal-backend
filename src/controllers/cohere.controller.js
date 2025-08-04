@@ -1,9 +1,7 @@
 import dotenv from 'dotenv';
 import { CohereClientV2 } from 'cohere-ai';
 import { v4 as uuidv4 } from 'uuid';
-import fs from 'fs/promises';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import { buildPrompt } from '../services/build.prompt.service.js';
 
 dotenv.config();
 
@@ -11,17 +9,6 @@ dotenv.config();
 const cohere = new CohereClientV2({
   token: process.env.COHERE_API_KEY,
 });
-
-
-async function buildPrompt(promptName, variables = {}) {
-  const __filename = fileURLToPath(import.meta.url);
-  const __dirname = path.dirname(__filename);
-  const filePath = path.join(__dirname, `../prompts/${promptName}.md`);
-
-  const raw = await fs.readFile(filePath, 'utf-8');
-  const compiled = new Function(...Object.keys(variables), `return \`${raw}\`;`);
-  return compiled(...Object.values(variables));
-}
 
 export async function cohereChat(prompt) {
   const chatResponse = await cohere.chat({
