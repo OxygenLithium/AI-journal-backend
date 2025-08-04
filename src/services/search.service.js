@@ -1,15 +1,8 @@
-import { cohere } from '../config/index.js';
 import { qdrantSearch } from '../controllers/qdrant.controller.js';
+import { cohereChat, cohereEmbed } from '../controllers/cohere.controller.js';
 
 async function searchRelevantIdeas(query) {
-  const response = await cohere.embed({
-    texts: [query],
-    model: 'embed-english-v3.0',
-    inputType: 'search_query',
-    embeddingTypes: ['float'],
-  });
-
-  const queryVector = response.embeddings.float[0];
+  const queryVector = await cohereEmbed(query);
 
   const searchResults = await qdrantSearch({
     vector: queryVector,
@@ -33,11 +26,5 @@ async function buildPromptWithMemory(input) {
 
 export async function searchAndBuildPrompt(query) {
   const prompt = await buildPromptWithMemory(query);
-
-  const chatResponse = await cohere.chat({
-    model: 'command-a-03-2025',
-    messages: [{ role: 'user', content: prompt }],
-  });
-
-  return chatResponse.message.content[0].text;
+  return await cohereChat(prompt);
 }
