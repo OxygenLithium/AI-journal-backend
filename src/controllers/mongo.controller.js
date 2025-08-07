@@ -40,11 +40,11 @@ export async function loadMoreEntries(lastSeen) {
     return ret;
 }
 
-async function getByObjectID(id) {
+export async function getByObjectID(id) {
     const db = await mongoConnect();
     const collection = db.collection('entries');
 
-    return await collection.findOne(id);
+    return await collection.findOne(new ObjectId(id));
 }
 
 export async function insertEntry(data) {
@@ -68,5 +68,5 @@ export async function updateEntry(update, ideaIDs, id) {
 
     await collection.updateOne({_id: new ObjectId(id)}, { $set: { text: update, ideaIDs: ideaIDs } });
 
-    return await getByObjectID(new ObjectId(id));
+    return await getByObjectID(id);
 }

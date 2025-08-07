@@ -12,7 +12,7 @@ app.use('/journal', journalRoutes);
 
 app.put('/query', async (req, res) => {
   const result = await searchAndBuildPrompt(req.body.input);
-  res.status(200).json({ cohereResponse: result });
+  res.status(200).json(result);
 });
 
 app.listen(port, () => {
