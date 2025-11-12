@@ -30,7 +30,9 @@ export async function cohereEmbed(text) {
   return response.embeddings.float[0];
 }
 
+// Test
 export async function generateIdeas(entryText) {
+  console.log(entryText)
   const rawResponse = await cohere.chat({
     model: 'command-a-03-2025',
     messages: [{
@@ -40,6 +42,8 @@ export async function generateIdeas(entryText) {
   });
 
   const ideas = JSON.parse(rawResponse.message.content[0].text);
+
+  console.log(ideas)
   const embedResponse = await cohere.embed({
     texts: ideas,
     model: 'embed-english-v3.0',
